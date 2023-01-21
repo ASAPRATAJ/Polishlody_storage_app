@@ -9,6 +9,8 @@ from kivymd.app import MDApp
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.list import MDList, TwoLineListItem
 
+check_names = []
+
 sql_connect = 'app_polish_storage.db'
 
 sql_create_table = """CREATE TABLE if not exists storage(
@@ -16,6 +18,8 @@ sql_create_table = """CREATE TABLE if not exists storage(
                         product_value integer DEFAULT(0))"""
 
 sql_insert = """INSERT INTO storage(product_name)VALUES(?)"""
+
+sql_delete_name = """DELETE FROM storage WHERE product_name=?"""
 
 sql_update_add = """UPDATE storage
                 SET product_value=product_value+?
@@ -27,10 +31,13 @@ sql_update_subtract = """UPDATE storage
 
 sql_show_records = """SELECT * FROM storage"""
 
-sql_delete_name = """DELETE FROM storage WHERE product_name=?"""
+
+class MenuScreen(Screen):
+    pass
 
 
-class AddName(Screen):
+class ProductName(Screen):
+
     def add_product_name(self):
         connection = sqlite3.connect(sql_connect)
 
@@ -58,19 +65,41 @@ class AddName(Screen):
         dialog = MDDialog(text=check_string)
         dialog.open()
 
+    def delete_product_name(self):
+        # Create connection to the database
+        connection = sqlite3.connect(sql_connect)
+        # Create cursor to operate in database
+        cur = connection.cursor()
 
-class MenuScreen(Screen):
-    pass
+        # Check if user entered input properly
+        if self.ids.product_name.text.isalpha():
+            # Delete product_name from storage tabel
+            cur.execute(sql_delete_name, (self.ids.product_name.text.lower(),))
+            check_string = 'Usunięto nazwę ' + self.ids.product_name.text
+        else:
+            check_string = 'Proszę podać prawidłową nazwę'
+
+        connection.commit()
+        connection.close()
+
+        # Clearing textfield
+        self.ids.product_name.text = ''
+
+        # Create an object of MDDialog which pops up
+        dialog = MDDialog(text=check_string)
+        dialog.open()
 
 
-class AddValue(Screen):
+class ProductValue(Screen):
+
     def add_product_value(self):
         # Create connection to the database
         connection = sqlite3.connect(sql_connect)
         # Create cursor to operate in database
         cur = connection.cursor()
 
-        if self.ids.product_value.text.isalnum() and self.ids.product_name.text.isalpha():
+        if self.ids.product_value.text.isalnum() and self.ids.product_name.text.isalpha() and \
+                check_names.count(self.ids.product_name.text) == 1:
             # Add a value to specified product_name
             cur.execute(sql_update_add, (int(self.ids.product_value.text), self.ids.product_name.text.lower()))
             check_string = 'Dodano ' + self.ids.product_name.text
@@ -89,8 +118,6 @@ class AddValue(Screen):
         dialog = MDDialog(text=check_string)
         dialog.open()
 
-
-class SubtractValue(Screen):
     def subtract_product_value(self):
         # Create connection to the database
         connection = sqlite3.connect(sql_connect)
@@ -107,7 +134,6 @@ class SubtractValue(Screen):
         # Apply changes and close connection
         connection.commit()
         connection.close()
-
         # Clearing textfield
         self.ids.product_name.text = ''
         self.ids.product_value.text = ''
@@ -152,7 +178,7 @@ class ShowRecords(Screen):
         for item_number in range(len(product_names)):
             item = TwoLineListItem(text=str(product_names[item_number]),
                                    secondary_text=str(product_values[item_number]))
-
+            check_names.append(product_names)
             list_view.add_widget(item)
 
         # Add scroll object with items to the screen object to be able to display it on the screen
@@ -160,32 +186,6 @@ class ShowRecords(Screen):
 
     def on_leave(self, *args):
         self.screen.clear_widgets()
-
-
-class DeleteName(Screen):
-    def delete_product_name(self):
-        # Create connection to the database
-        connection = sqlite3.connect(sql_connect)
-        # Create cursor to operate in database
-        cur = connection.cursor()
-
-        # Check if user entered input properly
-        if self.ids.delete_product_name.text.isalpha():
-            # Delete product_name from storage tabel
-            cur.execute(sql_delete_name, (self.ids.delete_product_name.text.lower(),))
-            check_string = 'Usunięto nazwę ' + self.ids.delete_product_name.text
-        else:
-            check_string = 'Proszę podać prawidłową nazwę'
-
-        connection.commit()
-        connection.close()
-
-        # Clearing textfield
-        self.ids.delete_product_name.text = ''
-
-        # Create an object of MDDialog which pops up
-        dialog = MDDialog(text=check_string)
-        dialog.open()
 
 
 class DemoApp(MDApp):
